@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile stored upon Google Sign-In or account registration",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["PASSENGER", "DRIVER", "ADMIN"] },
+        "phone": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "RideRecord": {
+      "title": "RideRecord",
+      "description": "A ride request and transit record persisted in Firestore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "passengerId": { "type": "string", "maxLength": 128 },
+        "passengerName": { "type": "string", "maxLength": 100 },
+        "pickupArea": { "type": "string", "maxLength": 100 },
+        "destinationArea": { "type": "string", "maxLength": 100 },
+        "seatsRequested": { "type": "integer" },
+        "fare": { "type": "integer" },
+        "formattedFare": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["REQUESTED", "MATCHED", "DRIVER_ARRIVED", "STARTED", "COMPLETED", "CANCELLED"] },
+        "vehicleName": { "type": "string", "maxLength": 50 },
+        "driverName": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "passengerId", "pickupArea", "destinationArea", "status"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A chat interaction with the Gemini transit copilot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "content": { "type": "string", "maxLength": 5000 },
+        "model": { "type": "string", "maxLength": 50 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "role", "content"]
+    },
+    "SavedPlace": {
+      "title": "SavedPlace",
+      "description": "User saved or searched Dhaka pickup/dropoff venue from Maps Grounding",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "uri": { "type": "string", "maxLength": 500 },
+        "snippet": { "type": "string", "maxLength": 1000 },
+        "area": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles partitioned by auth UID"
+    },
+    "/rides/{rideId}": {
+      "schema": { "$ref": "#/entities/RideRecord" },
+      "description": "Commuter rides in Dhaka Tesla Pool"
+    },
+    "/users/{userId}/chat_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Per-user multi-turn chat messages with Gemini assistant"
+    },
+    "/users/{userId}/saved_places/{placeId}": {
+      "schema": { "$ref": "#/entities/SavedPlace" },
+      "description": "User's bookmarked Dhaka places and grounded map venues"
+    }
+  }
+}

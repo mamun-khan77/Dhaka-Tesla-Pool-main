@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'mamunkhanbghs@gmail.com' ||
+        request.auth.token.email == 'admin@tesla.dhaka'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // User Profile rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasAll(['uid', 'email', 'role']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email is string &&
+        request.resource.data.role in ['PASSENGER', 'DRIVER', 'ADMIN'];
+      allow update: if (isOwner(userId) || isAdmin()) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email;
+      allow delete: if isAdmin();
+
+      // Subcollection: Chat messages with Gemini Copilot
+      match /chat_messages/{messageId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Subcollection: Saved Dhaka Places from Maps Grounding
+      match /saved_places/{placeId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Rides collection
+    match /rides/{rideId} {
+      allow get: if isSignedIn() && (resource.data.passengerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.passengerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        request.resource.data.passengerId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['id', 'passengerId', 'pickupArea', 'destinationArea', 'status']);
+      allow update: if isSignedIn() && (resource.data.passengerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,166 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+  ADMIN
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum RideStatus {
+  REQUESTED
+  MATCHED
+  DRIVER_ARRIVED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PoolStatus {
+  OPEN
+  FULL
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  TESLAPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  phone        String
+  passwordHash String
+  role         Role          @default(PASSENGER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  vehicles     Vehicle[]
+  rides        Ride[]
+  poolMembers  PoolMember[]
+  payments     Payment[]
+}
+
+model Vehicle {
+  id          String        @id @default(uuid())
+  driverId    String
+  name        String        // e.g. "Bullet"
+  model       String        @default("Tesla Model 3")
+  plateNumber String        @default("DHAKA-METRO-GA-11-2026")
+  capacity    Int           @default(3) // strictly enforced seat capacity
+  status      VehicleStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  driver      User          @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  pools       Pool[]
+
+  @@index([driverId])
+}
+
+model Ride {
+  id              String              @id @default(uuid())
+  passengerId     String
+  pickupArea      String              // e.g. "Banani"
+  destinationArea String              // e.g. "Mohakhali"
+  seatsRequested  Int                 @default(1)
+  baseFare        Int                 // in Poisha (e.g. 6000 = 60.00 BDT)
+  distanceCharge  Int                 // in Poisha
+  poolDiscount    Int                 @default(0) // in Poisha
+  fare            Int                 // Total charged fare in Poisha
+  status          RideStatus          @default(REQUESTED)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  passenger       User                @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  poolMember      PoolMember?
+  statusHistory   RideStatusHistory[]
+  payments        Payment[]
+
+  @@index([passengerId])
+  @@index([status])
+}
+
+model Pool {
+  id          String       @id @default(uuid())
+  vehicleId   String
+  status      PoolStatus   @default(OPEN)
+  routeSummary String?     // e.g. "Banani -> Mohakhali -> Gulshan 1"
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  vehicle     Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  members     PoolMember[]
+
+  @@index([vehicleId])
+  @@index([status])
+}
+
+model PoolMember {
+  id             String    @id @default(uuid())
+  poolId         String
+  rideId         String    @unique
+  passengerId    String
+  seats          Int       @default(1)
+  individualFare Int       // In Poisha
+  joinedAt       DateTime  @default(now())
+
+  pool           Pool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  ride           Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger      User      @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+  @@index([passengerId])
+}
+
+model RideStatusHistory {
+  id        String     @id @default(uuid())
+  rideId    String
+  status    RideStatus
+  note      String?
+  timestamp DateTime   @default(now())
+
+  ride      Ride       @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@index([rideId])
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  rideId         String
+  passengerId    String
+  amount         Int           // In Poisha
+  method         PaymentMethod @default(CASH)
+  status         PaymentStatus @default(PENDING)
+  transactionRef String?
+  createdAt      DateTime      @default(now())
+
+  ride           Ride          @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger      User          @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@index([rideId])
+  @@index([passengerId])
+}

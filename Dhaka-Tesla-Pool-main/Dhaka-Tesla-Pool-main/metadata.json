@@ -1,0 +1,6 @@
+{
+  "name": "Dhaka Tesla Pool",
+  "description": "Dhaka Tesla Pool — Share a seat. Split the fare. Survive Dhaka traffic. A modern electric ride-pooling platform for Dhaka commuters.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

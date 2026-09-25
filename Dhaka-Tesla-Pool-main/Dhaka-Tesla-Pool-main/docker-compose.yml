@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dhaka_tesla_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: tesla_user
+      POSTGRES_PASSWORD: tesla_secure_pass
+      POSTGRES_DB: dhaka_tesla_pool
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tesla_user -d dhaka_tesla_pool"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dhaka_tesla_backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: "postgresql://tesla_user:tesla_secure_pass@postgres:5432/dhaka_tesla_pool?schema=public"
+      JWT_SECRET: "dhaka-tesla-pool-super-secret-jwt-key-2026-secure"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma db push --skip-generate && npx tsx src/server/db/seed.ts && npx tsx server.ts"
+
+volumes:
+  postgres_data:
+    driver: local
